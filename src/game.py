@@ -18,6 +18,8 @@ ROOMS = {
     }
 }
 
+SHOW_INV = False
+
 ROOMS[STARTING_ROOM]["IMG"].fill((255, 255, 255))
 ROOM_SPRITESHEET = {}
 
@@ -33,17 +35,26 @@ def load_spritesheet(filename, data, colorkey=(1, 255, 1)):
         sheet[name] = sprite
     return sheet
 
-def draw(G):
+def draw(G, mouse_pos=None):
     room = ROOMS[G["ROOM"]]
     G["SCREEN"].blit(room["IMG"], (0, 0))
     for piece in list(room["ITEMS"].values()) + list(room["ACTORS"].values()):
         pos, dim = piece
         G["SCREEN"].blit(piece["IMG"], pos)
 
-def drawn_inventory(G):
+    if SHOW_INV:
+        idx = mouse_pos[1] // 48 if mouse_pos is not None and mouse_pos[0] > 1080-256 else None
+            
+        G["SCREEN"].blit(drawn_inventory(G, idx), (1080 - 256, 0))
+
+def drawn_inventory(G, idx=None):
     inv = G["INV"]
-    surf = pygame.Surface((640, 32 * len(inv)))
-    surf.blit
+    surf = pygame.Surface((256, 640))
+    surf.fill((255, 255, 255))
+    # opportunity to draw sprite here
+    for i, item in enumerate(inv):
+        col = (0, 150, 0) if idx == i else (0, 0, 0)
+        surf.blit(G["HEL32"].render(item, 0, (0, 0, 0)), (8, 8 + i * 48))
     return surf
 
 def setup_game():
@@ -64,9 +75,10 @@ def setup_game():
     return G
 
 def click_draw(G):
-    draw(G)
+    pos = pygame.mouse.get_pos()
+    draw(G, pos)
     pygame.mouse.set_visible(False)
-    pygame.draw.circle(G["SCREEN"], (100, 0, 0), pygame.mouse.get_pos(), 2)
+    pygame.draw.circle(G["SCREEN"], (100, 0, 0), pos, 2)
     
 def run_game(G):
     while True:
@@ -74,3 +86,4 @@ def run_game(G):
         pygame.display.update()
         pos = expect_click(G, click_draw)
 
+        
