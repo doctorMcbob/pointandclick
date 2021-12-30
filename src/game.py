@@ -1,13 +1,11 @@
 import pygame
 from pygame import Surface, Rect
 
-from src.utils import expect_click
+from src.utils import expect_click, load_spritesheet
 from src.spritesheets import ROOM_SPRITESHEET, UX_SPRITESHEET, ACTOR_SPRITESHEET, ITEM_SPRITESHEET, MOUSE_SPRITESHEET
 from src.rooms import ROOMS
 from src.actors import ACTORS
 from src.items import ITEMS
-
-IMG_LOCATION="src/img/"
 
 TITLE="Point And Click Adventure Game Jam"
 
@@ -16,7 +14,7 @@ STARTING_ROOM = "ROOT"
 SHOW_INV = False
 
 BUTTONS = {
-    "INVBUTTON": ((1080-64, 640 - 64), (64, 64))
+    "INVBUTTON": ((1072-64, 640 - 64), (64, 64))
 }
 
 def resolve(G, cmd):
@@ -49,18 +47,6 @@ def say(G, image_id, text):
         G["SCREEN"].blit(surf, (220, 640 - 256 - 64))
     expect_click(G, _say)
 
-def load_spritesheet(filename, data, colorkey=(1, 255, 1)):
-    """data should be dict with key: ((x, y), (w, h)), assumes w, h are 32, 32"""
-    surf = pygame.image.load(IMG_LOCATION+filename).convert()
-    sheet = {}
-    for name in data:
-        sprite = Surface(data[name][1])
-        x, y = 0 - data[name][0][0], 0 - data[name][0][1]
-        sprite.blit(surf, (x, y))
-        sprite.set_colorkey(colorkey)
-        sheet[name] = sprite
-    return sheet
-
 def draw(G, mouse_pos=None):
     room = ROOMS[G["ROOM"]]
     G["SCREEN"].blit(G["ROOMIMG"][room["IMG"]], (0, 0))
@@ -78,10 +64,9 @@ def draw(G, mouse_pos=None):
     pos, dim = BUTTONS["INVBUTTON"]
     G["SCREEN"].blit(G["SYSIMG"]["INVBUTTON"], pos)
     if SHOW_INV:
-        idx = mouse_pos[1] // 48 if mouse_pos is not None and mouse_pos[0] > 1080-256 else None
+        idx = mouse_pos[1] // 48 if mouse_pos is not None and mouse_pos[0] > 1072-256 else None
             
-        G["SCREEN"].blit(drawn_inventory(G, idx), (1080 - 256, 0))
-
+        G["SCREEN"].blit(drawn_inventory(G, idx), (1072 - 256, 0))
 
 def drawn_inventory(G, idx=None):
     inv = G["INV"]
@@ -96,7 +81,7 @@ def drawn_inventory(G, idx=None):
 
 def setup_game():
     G = {
-        "SCREEN": pygame.display.set_mode((1080, 640)),
+        "SCREEN": pygame.display.set_mode((1072, 640)),
         "HEL32": pygame.font.SysFont("Helvetica", 32),
         "CLOCK": pygame.time.Clock(),
         

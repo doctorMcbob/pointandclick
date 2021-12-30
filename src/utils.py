@@ -4,6 +4,8 @@ from pygame import Rect, Surface
 
 from math import cos, sin, atan, radians, degrees
 
+IMG_LOCATION="src/img/"
+
 ALPHABET_KEY_MAP = {
     K_a: "a", K_b: "b", K_c: "c", K_d: "d", K_e: "e",
     K_f: "f", K_g: "g", K_h: "h", K_i: "i", K_j: "j",
@@ -124,3 +126,16 @@ def shift_angle(angle, shift):
     deg = angle_from_pos(angle)
     deg += shift
     return pos_from_angle(deg)
+
+def load_spritesheet(filename, data, colorkey=(1, 255, 1)):
+    """data should be dict with key: ((x, y), (w, h)), assumes w, h are 32, 32"""
+    surf = pygame.image.load(IMG_LOCATION+filename).convert()
+    sheet = {}
+    for name in data:
+        sprite = Surface(data[name][1])
+        x, y = 0 - data[name][0][0], 0 - data[name][0][1]
+        sprite.blit(surf, (x, y))
+        sprite.set_colorkey(colorkey)
+        sheet[name] = sprite
+    return sheet
+
