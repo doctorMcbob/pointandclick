@@ -4,6 +4,8 @@ from pygame import Surface, Rect
 from src.utils import expect_click
 from src.spritesheets import ROOM_SPRITESHEET, UX_SPRITESHEET, ACTOR_SPRITESHEET, ITEM_SPRITESHEET, MOUSE_SPRITESHEET
 from src.rooms import ROOMS
+from src.actors import ACTORS
+from src.items import ITEMS
 
 IMG_LOCATION="src/img/"
 
@@ -33,7 +35,7 @@ def resolve(G, cmd):
 
     elif verb == "update":
         room, actor, new_cmds = data.split(":", 2)
-        ROOMS[room]["ACTORS"][actor]["CMDS"] = new_cmds.split(",")
+        ACTORS[actor]["CMDS"] = new_cmds.split(",")
 
 def say(G, image_id, text):
     def _say(G):
@@ -63,13 +65,13 @@ def draw(G, mouse_pos=None):
     room = ROOMS[G["ROOM"]]
     G["SCREEN"].blit(G["ROOMIMG"][room["IMG"]], (0, 0))
 
-    for name in room["ACTORS"]:
-        actor = room["ACTORS"][name]
+    for name in ACTORS:
+        actor = ACTORS[name]
         pos, dim = actor["RECT"]
         G["SCREEN"].blit(G["ACTORIMG"][actor["IMG"]], pos)
         
-    for name in room["ITEMS"]:
-        item = room["ITEMS"][name]
+    for name in ITEMS:
+        item = ITEMS[name]
         pos, dim = item["RECT"]
         G["SCREEN"].blit(G["ITEMIMG"][item["IMG"]], pos)
 
@@ -93,20 +95,20 @@ def drawn_inventory(G, idx=None):
     return surf
 
 def setup_game():
-    G = {}
-    G["SCREEN"] = pygame.display.set_mode((1080, 640))
-    G["HEL32"] = pygame.font.SysFont("Helvetica", 32)
-    G["CLOCK"] = pygame.time.Clock()
-
-    G["INV"] = []
-    G["ROOM"] = STARTING_ROOM
-
-    G["ROOMIMG"] = load_spritesheet("rooms.png", ROOM_SPRITESHEET)
-    G["SYSIMG"] = load_spritesheet("menu.png",  UX_SPRITESHEET)
-    G["ACTORIMG"] = load_spritesheet("actor.png",  ACTOR_SPRITESHEET)
-    G["MOUSEIMG"] = load_spritesheet("mouse.png", MOUSE_SPRITESHEET)
-    G["ITEMIMG"] = {}
-
+    G = {
+        "SCREEN": pygame.display.set_mode((1080, 640)),
+        "HEL32": pygame.font.SysFont("Helvetica", 32),
+        "CLOCK": pygame.time.Clock(),
+        
+        "INV": [],
+        "ROOM": STARTING_ROOM,
+        
+        "ROOMIMG": load_spritesheet("rooms.png", ROOM_SPRITESHEET),
+        "SYSIMG": load_spritesheet("menu.png",  UX_SPRITESHEET),
+        "ACTORIMG": load_spritesheet("actor.png",  ACTOR_SPRITESHEET),
+        "MOUSEIMG": load_spritesheet("mouse.png", MOUSE_SPRITESHEET),
+        "ITEMIMG" : {},
+    }
     pygame.display.set_caption(TITLE)
     return G
 
@@ -117,11 +119,12 @@ def click_draw(G):
 
     room = ROOMS[G["ROOM"]]
     mouse = "X"
-    for noun in ["ACTORS", "ITEMS", "EXITS"]:
-        for name in room[noun]:
-            if "MOUSE" in room[noun][name]:
-                if Rect(room[noun][name]["RECT"]).collidepoint(pos):
-                    mouse = room[noun][name]["MOUSE"]
+    for name in ACTORS:
+        actor = ACTORS[name]
+        if name not in room["ACTORS"]: continue
+        if "MOUSE" not in actor: continue
+        if Rect(actor["RECT"]).collidepoint(pos):
+            mouse = actor["MOUSE"]
     G["SCREEN"].blit(G["MOUSEIMG"][mouse], (pos[0]-8, pos[1]-8))
 
 def run_game(G):
@@ -135,8 +138,8 @@ def run_game(G):
         if Rect(BUTTONS["INVBUTTON"]).collidepoint(pos):
             SHOW_INV = not SHOW_INV
 
-        for name in room["ACTORS"]:
-            actor = room["ACTORS"][name]
+        for name in ACTORS:
+            actor = ACTORS[name]
             if Rect(actor["RECT"]).collidepoint(pos):
                 for cmd in actor["CMDS"]:
                     resolve(G, cmd)
