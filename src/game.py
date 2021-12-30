@@ -2,6 +2,8 @@ import pygame
 from pygame import Surface, Rect
 
 from src.utils import expect_click
+from src.spritesheets import ROOM_SPRITESHEET, UX_SPRITESHEET, ACTOR_SPRITESHEET, ITEM_SPRITESHEET, MOUSE_SPRITESHEET
+from src.rooms import ROOMS
 
 IMG_LOCATION="src/img/"
 
@@ -9,53 +11,7 @@ TITLE="Point And Click Adventure Game Jam"
 
 STARTING_ROOM = "ROOT"
 
-ROOMS = {
-    "ROOT" : {
-        "IMG": "ROOT",
-        "ITEMS"  : {},
-        "ACTORS" : {
-            "funGuy"  : {
-                "RECT"   : ((196, 348), (112, 160)),
-                "IMG"    : "funguyHappy",
-                "MOUSE"  : "POINT",
-                "CMDS"   : [
-                    "say|funguyHappy:Hello Fren",
-                    "say|funguyLaugh:What?/Were you expecting some/sort of tutorial?",
-                    "say|funguyHappy:Nope./Nothing here but me.",
-                    "say|funguySad:It's pretty lonely!"
-                ]
-            }
-        },
-        "LOCKS"  : {},
-        "EXITS"  : {},
-    }
-}
-
 SHOW_INV = False
-
-ROOM_SPRITESHEET = {
-    "ROOT":((0, 0), (1080, 640))
-}
-UX_SPRITESHEET = {
-    "INVBUTTON":((0, 0), (64, 64)),
-    "INVSLOT": ((640, 0) , (256, 48)),
-    "SAY": ((1280, 0), (640, 256))
-    
-}
-ACTOR_SPRITESHEET = {
-    "funguyHappy" : ((0, 0), (112, 160)),
-    "funguySad"   : ((112, 0), (112, 160)),
-    "funguyLaugh" : ((224, 0), (112, 160)),
-}
-ITEM_SPRITESHEET = {}
-MOUSE_SPRITESHEET = {
-    "X"      : ((0, 0), (16, 16)),
-    "POINT"  : ((16, 0), (16, 16)),
-    "UP"     : ((32, 0), (16, 16)),
-    "DOWN"   : ((48, 0), (16, 16)),
-    "LEFT"   : ((64, 0), (16, 16)),
-    "RIGHT"  : ((80, 0), (16, 16)),
-}
 
 BUTTONS = {
     "INVBUTTON": ((1080-64, 640 - 64), (64, 64))
