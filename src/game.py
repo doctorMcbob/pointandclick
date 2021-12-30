@@ -32,8 +32,11 @@ def resolve(G, cmd):
         G["INV"].append(data)
 
     elif verb == "update":
-        room, actor, new_cmds = data.split(":", 2)
-        ACTORS[actor]["CMDS"] = new_cmds.split(",")
+        actor, state = data.split(":")
+        ACTORS[actor]["STATE"] = state
+
+    elif verb == "goto":
+        G["ROOM"] = data
 
 def say(G, image_id, text):
     def _say(G):
@@ -126,5 +129,5 @@ def run_game(G):
         for name in ACTORS:
             actor = ACTORS[name]
             if Rect(actor["RECT"]).collidepoint(pos):
-                for cmd in actor["CMDS"]:
+                for cmd in actor[actor["STATE"]]:
                     resolve(G, cmd)

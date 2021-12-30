@@ -13,6 +13,9 @@ SAVED = False
 TITLE = "Point and Click Editor"
 IMG_LOCATION = "src/img/"
 
+SYS_KEYS = ["MOUSE", "IMG", "RECT", "STATE"]
+COMMAND_TYPES = ["say", "unlock", "give", "update", "goto"]
+
 SHEETS = {
     "rooms.png"  : ROOM_SPRITESHEET,
     "menu.png"  : UX_SPRITESHEET,
@@ -78,6 +81,10 @@ def run_editor(G):
             name = select_from_list(G, list(SHEETS.keys()), (0, 0))
             spritesheet_editor(G, name)
 
+        if inp == K_a and mods & KMOD_SHIFT:
+            name = select_from_list(G, list(ACTORS.keys()), (0, 0))
+            actor_editor(G, name)
+
         if inp == K_l and mods & KMOD_SHIFT:
             load_images(G)
 
@@ -101,6 +108,181 @@ def make_rect(pos, pos2):
     y2 = max(pos[1], pos2[1])
     return (x1, y1), ((x2 - x1), (y2 - y1))
 
+def drawn_cmd(G, cmd, dpth=None):
+    verb, data = cmd.split("|")
+    data = data.split(":")
+    
+    surf = Surface((1027, 32))
+    surf.fill((255, 215, 0) if (dpth == 1 and len(data) == 1) or (dpth == 2 and len(data) == 2)  else (130, 130, 250))
+    
+    pygame.draw.rect(surf, (255, 215, 0) if dpth == 0 else (130, 250, 130), Rect((0, 0), (64, 32)))
+    surf.blit(G["HEL32"].render(verb, 0, (0, 0, 0)), (0, 0))
+
+    if len(data) > 1:
+        pygame.draw.rect(surf, (255, 215, 0) if dpth == 1 else (250, 130, 130), Rect((64, 0), (128+64, 32)))
+        surf.blit(G["HEL32"].render(data[0], 0, (0, 0, 0)), (64, 0))
+        surf.blit(G["HEL32"].render(data[1], 0, (0, 0, 0)), (256, 0))
+    else:
+        surf.blit(G["HEL32"].render(data[0], 0, (0, 0, 0)), (126, 0))
+    return surf
+
+def drawn_cmds(G, cmds, idx=None, ddx=None):
+    surf = Surface((1027, (len(cmds)+1)*32))
+    surf.fill((1, 255, 1))
+    for i, cmd in enumerate(cmds):
+        surf.blit(drawn_cmd(G, cmd, dpth=ddx if i == idx else None), (0, i * 32))
+    if idx is not None:
+        surf.blit(G["HEL32"].render("ADD...", 0, (200, 0, 120) if idx == len(cmds) else (0, 0, 0) ), (0, len(cmds)*32))
+    surf.set_colorkey((1, 255, 1))
+    return surf
+
+def drawn_actor_data(G, actor, idx=None, ddx=None, offset=0):
+    surf = Surface((1072, 512))
+    surf.fill((200, 200, 200))
+    y = offset
+    i_ = 0
+    for i, key in enumerate(actor.keys()):
+        col = (200, 0, 120) if idx - (i+i_) == 0 else (0, 0, 0)
+        surf.blit(G["HEL32"].render(key, 0, col), (0, y))
+        if key not in SYS_KEYS:
+            y += 32
+            cmd_surf = drawn_cmds(G, actor[key], idx-(i+i_) if idx-(i+i_) >= 0 else None, ddx)
+            surf.blit(cmd_surf, (8, y))
+            y += cmd_surf.get_height()
+            i_ += len(actor[key])
+        else:
+            surf.blit(G["HEL32"].render(str(actor[key]), 0, col), (256, y))
+            y += 32
+    if idx is not None:
+        col = (200, 0, 120) if idx == len(list(actor.keys())) + sum(len(actor[key]) for key in filter(lambda key: key not in SYS_KEYS, list(actor.keys()))) else (0, 0, 0)
+        surf.blit(G["HEL32"].render("ADD...", 0, col), (0, y))
+
+    return surf
+
+def index_actor(actor, keys, idx):
+    i = 0
+    for key in keys:
+        if key not in SYS_KEYS:
+            cmds = actor[key]
+            for i_, cmd in enumerate(cmds):
+                if i == idx:
+                    return key, i-i_, i_
+                i += 1
+
+            if i == idx:
+                return key, i - len(cmds), -1
+            i += 1
+        else:
+            if i == idx:
+                return key, i, 0
+            i += 1
+    return False, 0, 0
+            
+def actor_editor(G, name):
+    # I am so sorry
+    actor = ACTORS[name]
+    keys = list(actor.keys())
+    idx = 0
+    ddx = 0
+    offset = 0
+    while True:
+        draw(G)
+        G["SCREEN"].blit(drawn_actor_data(G, actor, idx, ddx, offset), (256, 0))
+        G["SCREEN"].blit(G["HEL32"].render("{}, {}, {}".format(idx, ddx, len(keys)), 0, (255, 0, 0)), (1072, 808))
+        inp = expect_input()
+        mods = pygame.key.get_mods()
+
+        if inp == K_ESCAPE:
+            return
+
+        if mods & KMOD_SHIFT:
+            if inp == K_DOWN: offset += 32
+            if inp == K_UP: offset -= 32
+        else:
+            if inp == K_LEFT: ddx = max(0, ddx-1)
+            if inp == K_UP: idx = max(0, idx-1)
+            if inp == K_RIGHT: ddx = min(2, ddx+1)
+            if inp == K_DOWN: idx = min(len(keys) + sum(len(actor[key]) for key in filter(lambda key: key not in SYS_KEYS, keys)), idx+1)
+
+        if inp == K_RETURN:
+            key, i_, d_ = index_actor(actor, keys, idx)
+
+            if key:
+                if key == "IMG":
+                    img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0))
+                    if img:
+                        actor["IMG"] = img
+                        
+                if key == "MOUSE":
+                    mouse = select_from_list(G, list(G["MOUSEIMG"]), (0, 0))
+                    if mouse:
+                        actor["MOUSE"] = mouse
+                    
+                if key == "STATE":
+                    state = get_text_input(G, (0, 808))
+                    if state:
+                        actor["STATE"] = state
+
+                if key == "RECT":
+                    def click_draw(G):
+                        draw(G)
+                        pos = pygame.mouse.get_pos()
+                        G["SCREEN"].blit(G["ACTORIMG"][actor["IMG"]], pos)
+                    
+                    pos = expect_click(G, click_draw)
+                    if pos:
+                        actor["RECT"] = pos, G["ACTORIMG"][actor["IMG"]].get_size()
+
+                if key not in SYS_KEYS:
+                    if key and d_ != -1:
+                        cmds = actor[key]
+                        cmd = cmds[d_]
+                    else:
+                        cmd = select_from_list(G, COMMAND_TYPES, (0, 0))
+                        if cmd:
+                            if cmd == "say":
+                                imgid = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0))
+                                if imgid:
+                                    text = get_text_input(G, (0, 808))
+                                    if text:
+                                        [key].append("{cmd}|{imgid}:{text}".format(cmd=cmd, imgid=imgid, text=text))
+                                    
+                            if cmd == "unlock":
+                                room = select_from_list(G, list(ROOMS.keys()), (0, 0))
+                                if room:
+                                    lockid = select_from_list(G, [lockid for lockid in ROOMS[room]["LOCKS"]], (0, 0))
+                                    if lockid:
+                                        actor[key].append("{cmd}|{room}:{lockid}".format(cmd=cmd, room=room, lockid=lockid))
+                                        
+                            if cmd == "give":
+                                item = select_from_list(G, list(ITEMS.keys()), (0, 0))
+                                if item:
+                                    actor[key].append("{cmd}|{item}".format(cmd=cmd, item=item))
+                                    
+                            if cmd == "update":
+                                actor_name = select_from_list(G, list(ACTORS.keys()), (0, 0))
+                                if actor:
+                                    states = [key for key in filter(lambda key: key not in SYS_KEYS, list(ACTORS[actor_name].keys()))]
+                                    state = select_from_list(G, states, (0, 0))
+                                    if state:
+                                        actor[key].append("{cmd}|{actor}:{state}".format(cmd=cmd, actor=actor_name, state=state))
+                                        
+                            if cmd == "goto":
+                                room = select_from_list(G, list(ROOMS.keys()), (0, 0))
+                                if room:
+                                    actor[key].append("{cmd}|{room}".format(cmd=cmd, room=room))
+                                
+                        
+                        
+
+                    
+            if idx == len(keys) + sum(len(actor[key]) for key in filter(lambda key: key not in SYS_KEYS, keys)):
+                name = get_text_input(G, (0, 840-32))
+                if name:
+                    actor[name] = []
+                    keys = list(actor.keys())
+
+                                    
 def spritesheet_editor(G, name):
     sheet = SHEETS[name]
     SX, SY = (0, 0)
