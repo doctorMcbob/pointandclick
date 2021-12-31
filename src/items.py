@@ -1,1 +1,1 @@
-ITEMS = {}
+ITEMS = {'Dynamite': {'IMG': 'DYNAMITE', 'MOUSE': 'POINT', 'RECT': ((896, 510), (64, 64))}, 'Diamond': {'IMG': 'DIAMOND', 'MOUSE': 'POINT', 'RECT': ((256, 256), (64, 64))}}

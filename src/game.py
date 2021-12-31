@@ -26,7 +26,7 @@ def resolve(G, cmd):
 
     elif verb == "unlock":
         room, lockid = data.split(":")
-        ROOMS[room]["LOCKS"].remove(lockid)
+        ROOMS[room]["LOCKS"].pop(lockid)
 
     elif verb == "give":
         G["INV"].append(data)
@@ -54,12 +54,12 @@ def draw(G, mouse_pos=None):
     room = ROOMS[G["ROOM"]]
     G["SCREEN"].blit(G["ROOMIMG"][room["IMG"]], (0, 0))
 
-    for name in ACTORS:
+    for name in room["ACTORS"]:
         actor = ACTORS[name]
         pos, dim = actor["RECT"]
         G["SCREEN"].blit(G["ACTORIMG"][actor["IMG"]], pos)
         
-    for name in ITEMS:
+    for name in room["ITEMS"]:
         item = ITEMS[name]
         pos, dim = item["RECT"]
         G["SCREEN"].blit(G["ITEMIMG"][item["IMG"]], pos)
@@ -68,18 +68,19 @@ def draw(G, mouse_pos=None):
     G["SCREEN"].blit(G["SYSIMG"]["INVBUTTON"], pos)
     if SHOW_INV:
         idx = mouse_pos[1] // 48 if mouse_pos is not None and mouse_pos[0] > 1072-256 else None
-            
+
         G["SCREEN"].blit(drawn_inventory(G, idx), (1072 - 256, 0))
 
 def drawn_inventory(G, idx=None):
     inv = G["INV"]
-    surf = pygame.Surface((256, 560))
+    surf = pygame.Surface((256, 480))
     surf.fill((255, 255, 255))
+
     for i in range(10):
         surf.blit(G["SYSIMG"]["INVSLOT"], (0, i * 48))
     for i, item in enumerate(inv):
-        col = (0, 150, 0) if idx == i else (0, 0, 0)
-        surf.blit(G["HEL32"].render(item, 0, (0, 0, 0)), (8, 8 + i * 48))
+        col = (250, 150, 0) if idx == i else (0, 0, 0)
+        surf.blit(G["HEL32"].render(item, 0, col), (8, 8 + i * 48))
     return surf
 
 def setup_game():
@@ -95,11 +96,21 @@ def setup_game():
         "SYSIMG": load_spritesheet("menu.png",  UX_SPRITESHEET),
         "ACTORIMG": load_spritesheet("actor.png",  ACTOR_SPRITESHEET),
         "MOUSEIMG": load_spritesheet("mouse.png", MOUSE_SPRITESHEET),
-        "ITEMIMG" : {},
+        "ITEMIMG" : load_spritesheet("items.png", ITEM_SPRITESHEET),
     }
     pygame.display.set_caption(TITLE)
     return G
 
+def item_click(G, name):
+    global SHOW_INV
+    SHOW_INV = False
+    def _draw(G):
+        pos = pygame.mouse.get_pos()
+        item = ITEMS[name]
+        click_draw(G)
+        G["SCREEN"].blit(G["ITEMIMG"][item["IMG"]], (pos[0] - 32, pos[1] - 32))
+    return expect_click(G, _draw)
+        
 def click_draw(G):
     pos = pygame.mouse.get_pos()
     draw(G, pos)
@@ -113,6 +124,17 @@ def click_draw(G):
         if "MOUSE" not in actor: continue
         if Rect(actor["RECT"]).collidepoint(pos):
             mouse = actor["MOUSE"]
+    for name in room["EXITS"]:
+        ex = room["EXITS"][name]
+        if "MOUSE" not in ex: continue
+        if Rect(ex["RECT"]).collidepoint(pos):
+            mouse = ex["MOUSE"]
+    for name in ITEMS:
+        item = ITEMS[name]
+        if name not in room["ITEMS"]: continue
+        if "MOUSE" not in item: continue
+        if Rect(item["RECT"]).collidepoint(pos):
+            mouse = item["MOUSE"]
     G["SCREEN"].blit(G["MOUSEIMG"][mouse], (pos[0]-8, pos[1]-8))
 
 def run_game(G):
@@ -126,8 +148,54 @@ def run_game(G):
         if Rect(BUTTONS["INVBUTTON"]).collidepoint(pos):
             SHOW_INV = not SHOW_INV
 
-        for name in ACTORS:
-            actor = ACTORS[name]
-            if Rect(actor["RECT"]).collidepoint(pos):
-                for cmd in actor[actor["STATE"]]:
-                    resolve(G, cmd)
+        if SHOW_INV and pos[0] > 1072 - 256 and pos[1] < 480:
+            idx = pos[1] // 48
+            if idx < len(G["INV"]):
+                pos = item_click(G, G["INV"][idx])
+                if pos:
+                    for name in room["ACTORS"]:
+                        actor = ACTORS[name]
+                        
+                        if G["INV"][idx] in actor and Rect(actor["RECT"]).collidepoint(pos):
+                            for cmd in actor[G["INV"].pop(idx)]:
+                                resolve(G, cmd)
+
+                    for lockid in list(room["LOCKS"].keys()):
+                        lock = room["LOCKS"][lockid]
+                        if "KEY" in lock and lock["KEY"] == G["INV"][idx]:
+                            target = lock["TARGET"]
+                            if (target in room["ITEMS"] and Rect(ITEMS[target]["RECT"]).collidepoint(pos)
+                            ) or (target in room["EXITS"] and Rect(room["EXITS"][target]["RECT"]).collidepoint(pos)):
+                                room["LOCKS"].pop(lockid)
+                                G["INV"].pop(idx)
+                                if "CMDS" in lock:
+                                    for cmd in lock["CMDS"]:
+                                        resolve(G, cmd)
+                                break
+        else:
+            for name in room["ACTORS"]:
+                actor = ACTORS[name]
+                if Rect(actor["RECT"]).collidepoint(pos):
+                    for cmd in actor[actor["STATE"]]:
+                        resolve(G, cmd)
+                        
+            for name in room["EXITS"]:
+                if any(room["LOCKS"][lockid]["TARGET"] == name for lockid in room["LOCKS"]):
+                    continue
+
+                ex = room["EXITS"][name]
+                if Rect(ex["RECT"]).collidepoint(pos):
+                    G["ROOM"] = name
+
+            for name in room["ITEMS"]:
+                if any(room["LOCKS"][lockid]["TARGET"] == name for lockid in room["LOCKS"]):
+                    continue
+
+                item = ITEMS[name]
+                if Rect(item["RECT"]).collidepoint(pos):
+                    if "CMDS" in item:
+                        for cmd in item["CMDS"]:
+                            resolve(cmd)
+                    else:
+                        G["INV"].append(name)
+                        room["ITEMS"].remove(name)

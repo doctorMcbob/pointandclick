@@ -2,6 +2,8 @@ import pygame
 from pygame import Surface, Rect
 from pygame.locals import *
 
+from copy import deepcopy
+
 from src.utils import expect_click, expect_input, select_from_list, load_spritesheet, get_text_input
 
 from src.spritesheets import ROOM_SPRITESHEET, UX_SPRITESHEET, ACTOR_SPRITESHEET, ITEM_SPRITESHEET, MOUSE_SPRITESHEET
@@ -26,17 +28,36 @@ SHEETS = {
 
 IMAGES = {}
 
+ROOM_TEMPLATE = {
+    "IMG": None,
+    "ACTORS": [],
+    "ITEMS": [],
+    "EXITS": {},
+    "LOCKS": {},
+}
+ACTOR_TEMPLATE = {
+    "IMG": None,
+    "RECT": None,
+    "STATE": "START",
+    "MOUSE": "POINT",
+}
+ITEM_TEMPLATE = {
+    "IMG": None,
+    "RECT": None,
+    "MOUSE": "POINT",
+}
+
 def draw(G):
     G["SCREEN"].fill((1, 255, 1))
     room = ROOMS[G["ROOM"]]
     G["SCREEN"].blit(G["ROOMIMG"][room["IMG"]], (0, 0))
 
-    for name in ACTORS:
+    for name in room["ACTORS"]:
         actor = ACTORS[name]
         pos, dim = actor["RECT"]
         G["SCREEN"].blit(G["ACTORIMG"][actor["IMG"]], pos)
         
-    for name in ITEMS:
+    for name in room["ITEMS"]:
         item = ITEMS[name]
         pos, dim = item["RECT"]
         G["SCREEN"].blit(G["ITEMIMG"][item["IMG"]], pos)
@@ -47,7 +68,7 @@ def load_images(G):
         "SYSIMG": load_spritesheet("menu.png",  UX_SPRITESHEET),
         "ACTORIMG": load_spritesheet("actor.png",  ACTOR_SPRITESHEET),
         "MOUSEIMG": load_spritesheet("mouse.png", MOUSE_SPRITESHEET),
-        "ITEMIMG" : load_spritesheet("items.png", MOUSE_SPRITESHEET),
+        "ITEMIMG" : load_spritesheet("items.png", ITEM_SPRITESHEET),
     })
     for filename in SHEETS.keys():
         IMAGES[filename] = pygame.image.load(IMG_LOCATION+filename).convert()
@@ -61,7 +82,7 @@ def setup_editor(STARTING_ROOM="ROOT"):
         "ROOM": STARTING_ROOM,
     }
     pygame.display.set_caption(TITLE)
-
+    load_images(G)
     return G
 
 def run_editor(G):
@@ -70,6 +91,7 @@ def run_editor(G):
         draw(G)
         inp = expect_input()
         mods = pygame.key.get_mods()
+        room = ROOMS[G["ROOM"]]
         
         if inp == K_ESCAPE and (SAVED or mods & KMOD_CTRL):
             return
@@ -79,15 +101,115 @@ def run_editor(G):
 
         if inp == K_s and mods & KMOD_SHIFT:
             name = select_from_list(G, list(SHEETS.keys()), (0, 0))
-            spritesheet_editor(G, name)
-
-        if inp == K_a and mods & KMOD_SHIFT:
-            name = select_from_list(G, list(ACTORS.keys()), (0, 0))
-            actor_editor(G, name)
+            if name:
+                spritesheet_editor(G, name)
 
         if inp == K_l and mods & KMOD_SHIFT:
             load_images(G)
 
+        if inp == K_a and mods & KMOD_SHIFT:
+            name = select_from_list(G, list(ACTORS.keys())+["ADD..."], (0, 0))
+            if name:
+                if name == "ADD...":
+                    actor = get_text_input(G, (0, 0))
+                    img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0))
+                    if actor and img:
+                        ACTORS[actor] = deepcopy(ACTOR_TEMPLATE)
+                        ACTORS[actor]["IMG"] = img
+                        ACTORS[actor]["RECT"] = (0, 0), G["ACTORIMG"][img].get_size()
+
+                actor_editor(G, name if name != "ADD..." else actor)
+
+        elif inp == K_a:
+            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
+            if choice:
+                if choice == "ADD":
+                    name = select_from_list(G, list(ACTORS.keys()), (0, 0))
+                    if name:
+                        room["ACTORS"].append(name)
+                elif room["ACTORS"]:
+                    name = select_from_list(G, room["ACTORS"], (0, 0))
+                    if name:
+                        room["ACTORS"].remove(name)
+        
+        if inp == K_i and mods & KMOD_SHIFT:
+            name = select_from_list(G, list(ITEMS.keys())+["ADD..."], (0, 0))
+            if name:
+                if name == "ADD...":
+                    item = get_text_input(G, (0, 0))
+                    img = select_from_list(G, list(G["ITEMIMG"].keys()), (0, 0))
+                    if item and img:
+                        ITEMS[item] = deepcopy(ITEM_TEMPLATE)
+                        ITEMS[item]["IMG"] = img
+                        ITEMS[item]["RECT"] = (0, 0), G["ITEMIMG"][img].get_size()
+
+                item_editor(G, name if name != "ADD..." else item)
+
+        elif inp == K_i:
+            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
+            if choice:
+                if choice == "ADD":
+                    name = select_from_list(G, list(ITEMS.keys()), (0, 0))
+                    if name:
+                        room["ITEMS"].append(name)
+                elif room["ITEMS"]:
+                    name = select_from_list(G, room["ITEMS"], (0, 0))
+                    if name:
+                        room["ITEMS"].remove(name)
+        
+        if inp == K_r and mods & KMOD_SHIFT:
+            name = select_from_list(G, list(ROOMS.keys()) + ["ADD..."], (0, 0))
+            if name:
+                if name == "ADD...":
+                    room = get_text_input(G, (0, 0))
+                    img = select_from_list(G, list(G["ROOMIMG"].keys()), (0, 0))
+                    if room and img:
+                        ROOMS[room] = deepcopy(ROOM_TEMPLATE)
+                        ROOMS[room]["IMG"] = img
+                else:
+                    G["ROOM"] = name
+
+def item_editor(G, name):
+    idx = 0
+    offset=0
+    item = ITEMS[name]
+    keys = list(item.keys())
+    while True:
+        G["SCREEN"].blit(drawn_piece_data(G, item, idx, None, offset), (256, 0))
+        inp = expect_input()
+        mods = pygame.key.get_mods()
+        if mods & KMOD_SHIFT:
+            if inp == K_DOWN: offset += 32
+            if inp == K_UP: offset -= 32
+        else:
+            if inp == K_DOWN: idx = max(0, idx - 1)
+            if inp == K_UP: idx = min(len(keys)-1, idx + 1)
+
+        if inp == K_ESCAPE: return
+
+        if inp == K_RETURN:
+            key = keys[idx] 
+            if key:
+                if key == "IMG":
+                    img = select_from_list(G, list(G["ITEMIMG"].keys()), (0, 0))
+                    if img:
+                        item["IMG"] = img
+                    
+                if key == "MOUSE":
+                    mouse = select_from_list(G, list(G["MOUSEIMG"]), (0, 0))
+                    if mouse:
+                        item["MOUSE"] = mouse
+                    
+                if key == "RECT":
+                    def click_draw(G):
+                        draw(G)
+                        pos = pygame.mouse.get_pos()
+                        G["SCREEN"].blit(G["ITEMIMG"][item["IMG"]], pos)
+                        
+                    pos = expect_click(G, click_draw)
+                    if pos:
+                        item["RECT"] = pos, G["ITEMIMG"][item["IMG"]].get_size()
+  
 def drawn_spritesheet_data(G, d, idx=None):
     keys = d.keys()
     surf = Surface((512, (len(d.keys()) + 1) * 16))
@@ -136,7 +258,7 @@ def drawn_cmds(G, cmds, idx=None, ddx=None):
     surf.set_colorkey((1, 255, 1))
     return surf
 
-def drawn_actor_data(G, actor, idx=None, ddx=None, offset=0):
+def drawn_piece_data(G, actor, idx=None, ddx=None, offset=0):
     surf = Surface((1072, 512))
     surf.fill((200, 200, 200))
     y = offset
@@ -187,7 +309,7 @@ def actor_editor(G, name):
     offset = 0
     while True:
         draw(G)
-        G["SCREEN"].blit(drawn_actor_data(G, actor, idx, ddx, offset), (256, 0))
+        G["SCREEN"].blit(drawn_piece_data(G, actor, idx, ddx, offset), (256, 0))
         G["SCREEN"].blit(G["HEL32"].render("{}, {}, {}".format(idx, ddx, len(keys)), 0, (255, 0, 0)), (1072, 808))
         inp = expect_input()
         mods = pygame.key.get_mods()
@@ -315,13 +437,14 @@ def spritesheet_editor(G, name):
         if inp == K_a: SX -= 16 + (48 * mods & KMOD_SHIFT)
         if inp == K_w: SY -= 16 + (48 * mods & KMOD_SHIFT)
         if inp == K_d: SX += 16 + (48 * mods & KMOD_SHIFT)
-        if inp == K_s: SY += 16 + (48 * mods & KMOD_SHIFT)
-
-        if inp == K_ESCAPE:
-            return
 
         if inp == K_s and mods & KMOD_CTRL:
             save()
+
+        elif inp == K_s: SY += 16 + (48 * mods & KMOD_SHIFT)
+
+        if inp == K_ESCAPE:
+            return
 
         if inp == K_SPACE and mods & KMOD_CTRL:
             if idx < len(keys):
