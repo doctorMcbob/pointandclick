@@ -169,6 +169,69 @@ def run_editor(G):
                 else:
                     G["ROOM"] = name
 
+        if inp == K_e:
+            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
+            if choice:
+                if choice == "ADD":
+                    to = select_from_list(G, list(ROOMS.keys()), (0, 0))
+                    rect = input_rect(G)
+                    mouse = select_from_list(G, list(G["MOUSEIMG"].keys()), (0, 0))
+                    if to and rect and mouse:
+                        room["EXITS"][to] = {
+                            "RECT": rect,
+                            "MOUSE": mouse
+                        }
+                    
+                else:
+                    ex = select_from_list(G, list(room["EXITS"].keys()), (0, 0))
+                    if ex:
+                        room["EXITS"].pop(ex)
+
+        if inp == K_l:
+            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
+            if choice:
+                if choice == "ADD":
+                    lockid = get_text_input(G, (0, 0))
+                    target = select_from_list(G, list(room["EXITS"].keys()) + room["ITEMS"], (0, 0))
+                    key = select_from_list(G, list(ITEMS.keys()) + ["[ NONE ]"], (0, 0))
+                    if lockid and target and key:
+                        room['LOCKS'][lockid] = {
+                            "TARGET": target,
+                        }
+                        if key != "[ NONE ]":
+                            room["LOCKS"][lockid]["KEY"] = key
+                else:
+                    lock = select_from_list(G, list(room["LOCKS"].keys()), (0, 0))
+                    if lock:
+                        room["LOCKS"].pop(lock)
+
+
+def input_rect(G):
+    G["SCREEN"].blit(G["HEL32"].render("DRAW RECT", 0, (0, 0, 0)), (0, G["SCREEN"].get_height() - 128))
+    def draw_helper_(G):
+        draw(G)
+        mpos = pygame.mouse.get_pos()
+        G["SCREEN"].blit(G["HEL16"].render("{}".format((mpos[0] // 4, mpos[1] // 4)), 0, (0, 0, 0)), mpos)
+
+    pos = expect_click(G, cb=draw_helper_)
+    if not pos: return None
+    def draw_helper(G):
+        draw_helper_(G)
+        pos2 = pygame.mouse.get_pos()
+        x1 = min(pos[0], pos2[0])
+        x2 = max(pos[0], pos2[0])
+        y1 = min(pos[1], pos2[1])
+        y2 = max(pos[1], pos2[1])
+        pygame.draw.rect(G["SCREEN"], (0, 255, 0), Rect((x1, y1), (x2 - x1, y2 - y1)), width=1)
+
+    pos2 = expect_click(G, draw_helper)
+    if not pos2: return None
+    x1 = min(pos[0], pos2[0])
+    x2 = max(pos[0], pos2[0])
+    y1 = min(pos[1], pos2[1])
+    y2 = max(pos[1], pos2[1])
+    return (x1, y1), ((x2 - x1), (y2 - y1))
+
 def item_editor(G, name):
     idx = 0
     offset=0
