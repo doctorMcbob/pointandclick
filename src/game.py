@@ -26,7 +26,8 @@ def resolve(G, cmd):
 
     elif verb == "unlock":
         room, lockid = data.split(":")
-        ROOMS[room]["LOCKS"].pop(lockid)
+        if lockid in ROOMS[room]["LOCKS"]:
+            ROOMS[room]["LOCKS"].pop(lockid)
 
     elif verb == "give":
         G["INV"].append(data)
@@ -38,15 +39,43 @@ def resolve(G, cmd):
     elif verb == "goto":
         G["ROOM"] = data
 
+    elif verb == "change":
+        actor, state, name = data.split(":")
+        ACTORS[actor][name] = ACTORS[actor][state]
+
+    elif verb == "img":
+        actor, image = data.split(":")
+        ACTORS[actor]["IMG"] = image
+
+    elif verb == "put":
+        room, item = data.split(":")
+        ROOMS[room]["ITEMS"].append(item)
+
+    elif verb == "drop":
+        room, name = data.split(":")
+        if name in ROOMS[room]["ITEMS"]: ROOMS[room]["ITEMS"].remove(name)
+        if name in ROOMS[room]["ACTORS"]: ROOMS[room]["ACTORS"].remove(name)
+
+    elif verb == "exec":
+        actor, state = data.split(":")
+        if state in ACTORS[actor]:
+            for cmd in ACTORS[actor][state]:
+                resolve(G, cmd)
+                
+
 def say(G, image_id, text):
     def _say(G):
         click_draw(G)
         surf = Surface((640, 256))
-        surf.fill((255, 255, 255))
-        surf.blit(G["ACTORIMG"][image_id], (0, 0))
+        surf.fill((1, 255, 1))
+        actor = Surface((160, 230))
+        actor.fill((255, 255, 255))
+        actor.blit(G["ACTORIMG"][image_id], (0, 5))
+        surf.blit(actor, (28, 23-5))
         surf.blit(G["SYSIMG"]["SAY"], (0, 0))
         for i, line in enumerate(text.split("/")):
-            surf.blit(G["HEL32"].render(line, 0, (0, 0, 0)), (205, 20 + i*34))
+            surf.blit(G["HEL32"].render(line, 0, (0, 0, 0)), (225, 20 + i*34))
+        surf.set_colorkey((1, 255, 1))
         G["SCREEN"].blit(surf, (220, 640 - 256 - 64))
     expect_click(G, _say)
 
@@ -67,20 +96,28 @@ def draw(G, mouse_pos=None):
     pos, dim = BUTTONS["INVBUTTON"]
     G["SCREEN"].blit(G["SYSIMG"]["INVBUTTON"], pos)
     if SHOW_INV:
-        idx = mouse_pos[1] // 48 if mouse_pos is not None and mouse_pos[0] > 1072-256 else None
+        idx = (mouse_pos[1] - 48) // 48 if mouse_pos is not None and mouse_pos[0] > 1072-256 else None
 
         G["SCREEN"].blit(drawn_inventory(G, idx), (1072 - 256, 0))
 
 def drawn_inventory(G, idx=None):
     inv = G["INV"]
     surf = pygame.Surface((256, 480))
-    surf.fill((255, 255, 255))
-
-    for i in range(10):
-        surf.blit(G["SYSIMG"]["INVSLOT"], (0, i * 48))
+    surf.fill((1, 255, 1))
+    surf.blit(G["SYSIMG"]["INVTOP"], (0, 0))
+    surf.blit(G["SYSIMG"]["INVBOT"], (0, 480-48))
+    
+    for i in range(8):
+        if i == 0:
+            surf.blit(G["SYSIMG"]["INVTOPSLOT"], (0, 48 + i * 48))
+        elif i == 7:
+            surf.blit(G["SYSIMG"]["INVBOTSLOT"], (0, 48 + i * 48))
+        else:
+            surf.blit(G["SYSIMG"]["INVSLOT"], (0, 48 + i * 48))
     for i, item in enumerate(inv):
-        col = (250, 150, 0) if idx == i else (0, 0, 0)
-        surf.blit(G["HEL32"].render(item, 0, col), (8, 8 + i * 48))
+        col = (50, 160, 85) if idx == i else (0, 0, 0)
+        surf.blit(G["HEL32"].render(item, 0, col), (8, 48 + 8 + i * 48))
+    surf.set_colorkey((1, 255, 1))
     return surf
 
 def setup_game():
@@ -149,16 +186,17 @@ def run_game(G):
             SHOW_INV = not SHOW_INV
 
         if SHOW_INV and pos[0] > 1072 - 256 and pos[1] < 480:
-            idx = pos[1] // 48
-            if idx < len(G["INV"]):
+            idx = (pos[1] - 48) // 48
+            if G["INV"] and idx < len(G["INV"]):
+                item = G["INV"][idx]
                 pos = item_click(G, G["INV"][idx])
                 if pos:
                     for name in room["ACTORS"]:
                         actor = ACTORS[name]
-                        
-                        if G["INV"][idx] in actor and Rect(actor["RECT"]).collidepoint(pos):
-                            for cmd in actor[G["INV"].pop(idx)]:
+                        if item in actor and Rect(actor["RECT"]).collidepoint(pos):
+                            for cmd in actor[item]:
                                 resolve(G, cmd)
+                            G["INV"].remove(item)
 
                     for lockid in list(room["LOCKS"].keys()):
                         lock = room["LOCKS"][lockid]

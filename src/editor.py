@@ -16,7 +16,7 @@ TITLE = "Point and Click Editor"
 IMG_LOCATION = "src/img/"
 
 SYS_KEYS = ["MOUSE", "IMG", "RECT", "STATE"]
-COMMAND_TYPES = ["say", "unlock", "give", "update", "goto"]
+COMMAND_TYPES = ["say", "unlock", "give", "update", "goto", "change", "img", "put", "drop", "exec"]
 
 SHEETS = {
     "rooms.png"  : ROOM_SPRITESHEET,
@@ -100,7 +100,7 @@ def run_editor(G):
             save()
 
         if inp == K_s and mods & KMOD_SHIFT:
-            name = select_from_list(G, list(SHEETS.keys()), (0, 0))
+            name = select_from_list(G, list(SHEETS.keys()), (0, 0), cb=draw)
             if name:
                 spritesheet_editor(G, name)
 
@@ -108,11 +108,11 @@ def run_editor(G):
             load_images(G)
 
         if inp == K_a and mods & KMOD_SHIFT:
-            name = select_from_list(G, list(ACTORS.keys())+["ADD..."], (0, 0))
+            name = select_from_list(G, list(ACTORS.keys())+["ADD..."], (0, 0), cb=draw)
             if name:
                 if name == "ADD...":
                     actor = get_text_input(G, (0, 0))
-                    img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0))
+                    img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0), cb=draw)
                     if actor and img:
                         ACTORS[actor] = deepcopy(ACTOR_TEMPLATE)
                         ACTORS[actor]["IMG"] = img
@@ -121,23 +121,23 @@ def run_editor(G):
                 actor_editor(G, name if name != "ADD..." else actor)
 
         elif inp == K_a:
-            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
+            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0), cb=draw)
             if choice:
                 if choice == "ADD":
-                    name = select_from_list(G, list(ACTORS.keys()), (0, 0))
+                    name = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
                     if name:
                         room["ACTORS"].append(name)
                 elif room["ACTORS"]:
-                    name = select_from_list(G, room["ACTORS"], (0, 0))
+                    name = select_from_list(G, room["ACTORS"], (0, 0), cb=draw)
                     if name:
                         room["ACTORS"].remove(name)
         
         if inp == K_i and mods & KMOD_SHIFT:
-            name = select_from_list(G, list(ITEMS.keys())+["ADD..."], (0, 0))
+            name = select_from_list(G, list(ITEMS.keys())+["ADD..."], (0, 0), cb=draw)
             if name:
                 if name == "ADD...":
                     item = get_text_input(G, (0, 0))
-                    img = select_from_list(G, list(G["ITEMIMG"].keys()), (0, 0))
+                    img = select_from_list(G, list(G["ITEMIMG"].keys()), (0, 0), cb=draw)
                     if item and img:
                         ITEMS[item] = deepcopy(ITEM_TEMPLATE)
                         ITEMS[item]["IMG"] = img
@@ -146,23 +146,23 @@ def run_editor(G):
                 item_editor(G, name if name != "ADD..." else item)
 
         elif inp == K_i:
-            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
+            choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0), cb=draw)
             if choice:
                 if choice == "ADD":
-                    name = select_from_list(G, list(ITEMS.keys()), (0, 0))
+                    name = select_from_list(G, list(ITEMS.keys()), (0, 0), cb=draw)
                     if name:
                         room["ITEMS"].append(name)
                 elif room["ITEMS"]:
-                    name = select_from_list(G, room["ITEMS"], (0, 0))
+                    name = select_from_list(G, room["ITEMS"], (0, 0), cb=draw)
                     if name:
                         room["ITEMS"].remove(name)
         
         if inp == K_r and mods & KMOD_SHIFT:
-            name = select_from_list(G, list(ROOMS.keys()) + ["ADD..."], (0, 0))
+            name = select_from_list(G, list(ROOMS.keys()) + ["ADD..."], (0, 0), cb=draw)
             if name:
                 if name == "ADD...":
                     room = get_text_input(G, (0, 0))
-                    img = select_from_list(G, list(G["ROOMIMG"].keys()), (0, 0))
+                    img = select_from_list(G, list(G["ROOMIMG"].keys()), (0, 0), cb=draw)
                     if room and img:
                         ROOMS[room] = deepcopy(ROOM_TEMPLATE)
                         ROOMS[room]["IMG"] = img
@@ -173,9 +173,9 @@ def run_editor(G):
             choice = select_from_list(G, ["ADD", "REMOVE"], (0, 0))
             if choice:
                 if choice == "ADD":
-                    to = select_from_list(G, list(ROOMS.keys()), (0, 0))
+                    to = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
                     rect = input_rect(G)
-                    mouse = select_from_list(G, list(G["MOUSEIMG"].keys()), (0, 0))
+                    mouse = select_from_list(G, list(G["MOUSEIMG"].keys()), (0, 0), cb=draw)
                     if to and rect and mouse:
                         room["EXITS"][to] = {
                             "RECT": rect,
@@ -183,7 +183,7 @@ def run_editor(G):
                         }
                     
                 else:
-                    ex = select_from_list(G, list(room["EXITS"].keys()), (0, 0))
+                    ex = select_from_list(G, list(room["EXITS"].keys()), (0, 0), cb=draw)
                     if ex:
                         room["EXITS"].pop(ex)
 
@@ -192,8 +192,8 @@ def run_editor(G):
             if choice:
                 if choice == "ADD":
                     lockid = get_text_input(G, (0, 0))
-                    target = select_from_list(G, list(room["EXITS"].keys()) + room["ITEMS"], (0, 0))
-                    key = select_from_list(G, list(ITEMS.keys()) + ["[ NONE ]"], (0, 0))
+                    target = select_from_list(G, list(room["EXITS"].keys()) + room["ITEMS"], (0, 0), cb=draw)
+                    key = select_from_list(G, list(ITEMS.keys()) + ["[ NONE ]"], (0, 0), cb=draw)
                     if lockid and target and key:
                         room['LOCKS'][lockid] = {
                             "TARGET": target,
@@ -201,7 +201,7 @@ def run_editor(G):
                         if key != "[ NONE ]":
                             room["LOCKS"][lockid]["KEY"] = key
                 else:
-                    lock = select_from_list(G, list(room["LOCKS"].keys()), (0, 0))
+                    lock = select_from_list(G, list(room["LOCKS"].keys()), (0, 0), cb=draw)
                     if lock:
                         room["LOCKS"].pop(lock)
 
@@ -254,12 +254,12 @@ def item_editor(G, name):
             key = keys[idx] 
             if key:
                 if key == "IMG":
-                    img = select_from_list(G, list(G["ITEMIMG"].keys()), (0, 0))
+                    img = select_from_list(G, list(G["ITEMIMG"].keys()), (0, 0), cb=draw)
                     if img:
                         item["IMG"] = img
                     
                 if key == "MOUSE":
-                    mouse = select_from_list(G, list(G["MOUSEIMG"]), (0, 0))
+                    mouse = select_from_list(G, list(G["MOUSEIMG"]), (0, 0), cb=draw)
                     if mouse:
                         item["MOUSE"] = mouse
                     
@@ -362,9 +362,152 @@ def index_actor(actor, keys, idx):
                 return key, i, 0
             i += 1
     return False, 0, 0
-            
+
+def make_cmd(G):
+    cmd = select_from_list(G, COMMAND_TYPES, (0, 0), cb=draw)
+    if cmd:
+        if cmd == "say":
+            imgid = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0), cb=draw)
+            if imgid:
+                text = get_text_input(G, (0, 808))
+                if text:
+                    return "{cmd}|{imgid}:{text}".format(cmd=cmd, imgid=imgid, text=text)
+                                    
+        if cmd == "unlock":
+            room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+            if room:
+                lockid = select_from_list(G, [lockid for lockid in ROOMS[room]["LOCKS"]], (0, 0), cb=draw)
+                if lockid:
+                    return "{cmd}|{room}:{lockid}".format(cmd=cmd, room=room, lockid=lockid)
+                                        
+        if cmd == "give":
+            item = select_from_list(G, list(ITEMS.keys()), (0, 0), cb=draw)
+            if item:
+                return "{cmd}|{item}".format(cmd=cmd, item=item)
+                                    
+        if cmd in ["update", "exec"]:
+            actor_name = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
+            if actor_name:
+                states = [key for key in filter(lambda key: key not in SYS_KEYS, list(ACTORS[actor_name].keys()))]
+                state = select_from_list(G, states, (0, 0), cb=draw)
+                if state:
+                    return "{cmd}|{actor}:{state}".format(cmd=cmd, actor=actor_name, state=state)
+
+        if cmd == "goto":
+            room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+            if room:
+                return "{cmd}|{room}".format(cmd=cmd, room=room)
+
+        if cmd == "change":
+            actor_name = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
+            if actor_name:
+                states = [key for key in filter(lambda key: key not in SYS_KEYS, list(ACTORS[actor_name].keys()))]
+                state = select_from_list(G, states, (0, 0), cb=draw)
+                if state:
+                    text = get_text_input(G, (0, 0))
+                    if text:
+                        return "{cmd}|{actor}:{state}:{text}".format(cmd=cmd, actor=actor_name, state=state, text=text)
+
+        if cmd == "img":
+            actor_name = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
+            if actor_name:
+                img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0), cb=draw)
+                if img:
+                    return "{cmd}|{actor}:{img}".format(cmd=cmd, actor=actor_name, img=img)
+
+        if cmd == "put":
+            room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+            if room:
+                item = select_from_list(G, list(ITEMS.keys()), (0, 0), cb=draw)
+                if item:
+                    return "{cmd}|{room}:{item}".format(cmd=cmd, room=room, item=item)
+
+        if cmd == "drop":
+            room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+            if room:
+                thing = get_text_input(G, (0, 0))
+                if thing:
+                    return "{cmd}|{room}:{thing}".format(cmd=cmd, room=room, thing=thing)
+
+    return False
+
+def edit_cmd(G, cmd, depth):
+    if depth == 0: return make_cmd(G)
+    verb, data = cmd.split("|", 1)
+    
+    if verb == "say":
+        img, text = data.split(":", 1)
+        if depth == 1:
+            img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0), cb=draw)
+            if img:
+                return "{verb}|{img}:{text}".format(verb=verb, img=img, text=text)
+        if depth == 2:
+            text = get_text_input(G, (0, 0))
+            if img:
+                return "{verb}|{img}:{text}".format(verb=verb, img=img, text=text)
+
+    if verb == "unlock":
+        room, lockid = data.split(":", 1)
+        if depth == 1:
+            room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+            if not room: return
+        lockid = select_from_list(G, list(ROOMS[room]["LOCKS"].keys()), (0, 0), cb=draw)
+        if lockid:
+            return "{verb}|{room}:{lockid}".format(verb=verb, room=room, lockid=lockid)
+
+    if verb == "give":
+        item = select_from_list(G, list(ITEMS.keys()), (0, 0), cb=draw)
+        if item:
+            return "{verb}|{item}".format(verb=verb, item=item)
+
+    if verb in ["update", "exec"]:
+        actor, state = data.split(":", 1)
+        if depth == 1:
+            actor = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
+            if not actor: return
+        states = [key for key in filter(lambda key: key not in SYS_KEYS, list(ACTORS[actor].keys()))]
+        state = select_from_list(G, states, (0, 0), cb=draw)
+        if state:
+            return "{verb}|{actor}:{state}".format(verb=verb, actor=actor, state=state)
+
+    if verb == "goto":
+        room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+        if room:
+            return "{verb}|{room}".format(verb=verb, room=room)
+
+    if verb == "change":
+        actor_name = data.split(":")[0]
+        states = [key for key in filter(lambda key: key not in SYS_KEYS, list(ACTORS[actor_name].keys()))]
+        state = select_from_list(G, states, (0, 0), cb=draw)
+        if state:
+            text = get_text_input(G, (0, 0))
+            if text:
+                return "{verb}|{actor}:{state}:{text}".format(verb=verb, actor=actor_name, state=state, text=text)
+
+    if verb == "IMG":
+        actor_name = data.split(":")[0]
+        img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0), cb=draw)
+        if img:
+            return "{verb}|{actor}:{img}".format(verb=verb, actor=actor_name, img=img)
+
+    if cmd == "put":
+        room = data.split(":")[0]
+        if room:
+            item = select_from_list(G, list(ITEMS.keys()), (0, 0), cb=draw)
+            if item:
+                return "{verb}|{room}:{item}".format(verb=verb, room=room, item=item)
+
+    if cmd == "drop":
+        room = data.split(":")[0]
+        if room:
+            thing = get_text_input(G, (0, 0))
+            if thing:
+                return "{verb}|{room}:{thing}".format(verb=verb, room=room, thing=thing)
+
+    return False
+
+
 def actor_editor(G, name):
-    # I am so sorry
     actor = ACTORS[name]
     keys = list(actor.keys())
     idx = 0
@@ -394,12 +537,12 @@ def actor_editor(G, name):
 
             if key:
                 if key == "IMG":
-                    img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0))
+                    img = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0), cb=draw)
                     if img:
                         actor["IMG"] = img
                         
                 if key == "MOUSE":
-                    mouse = select_from_list(G, list(G["MOUSEIMG"]), (0, 0))
+                    mouse = select_from_list(G, list(G["MOUSEIMG"]), (0, 0), cb=draw)
                     if mouse:
                         actor["MOUSE"] = mouse
                     
@@ -422,44 +565,14 @@ def actor_editor(G, name):
                     if key and d_ != -1:
                         cmds = actor[key]
                         cmd = cmds[d_]
+                        new = edit_cmd(G, cmd, ddx)
+                        if new:
+                            print(new)
+                            cmds[d_] = new
                     else:
-                        cmd = select_from_list(G, COMMAND_TYPES, (0, 0))
+                        cmd = make_cmd(G)
                         if cmd:
-                            if cmd == "say":
-                                imgid = select_from_list(G, list(G["ACTORIMG"].keys()), (0, 0))
-                                if imgid:
-                                    text = get_text_input(G, (0, 808))
-                                    if text:
-                                        [key].append("{cmd}|{imgid}:{text}".format(cmd=cmd, imgid=imgid, text=text))
-                                    
-                            if cmd == "unlock":
-                                room = select_from_list(G, list(ROOMS.keys()), (0, 0))
-                                if room:
-                                    lockid = select_from_list(G, [lockid for lockid in ROOMS[room]["LOCKS"]], (0, 0))
-                                    if lockid:
-                                        actor[key].append("{cmd}|{room}:{lockid}".format(cmd=cmd, room=room, lockid=lockid))
-                                        
-                            if cmd == "give":
-                                item = select_from_list(G, list(ITEMS.keys()), (0, 0))
-                                if item:
-                                    actor[key].append("{cmd}|{item}".format(cmd=cmd, item=item))
-                                    
-                            if cmd == "update":
-                                actor_name = select_from_list(G, list(ACTORS.keys()), (0, 0))
-                                if actor:
-                                    states = [key for key in filter(lambda key: key not in SYS_KEYS, list(ACTORS[actor_name].keys()))]
-                                    state = select_from_list(G, states, (0, 0))
-                                    if state:
-                                        actor[key].append("{cmd}|{actor}:{state}".format(cmd=cmd, actor=actor_name, state=state))
-                                        
-                            if cmd == "goto":
-                                room = select_from_list(G, list(ROOMS.keys()), (0, 0))
-                                if room:
-                                    actor[key].append("{cmd}|{room}".format(cmd=cmd, room=room))
-                                
-                        
-                        
-
+                            actor[key].append(cmd)
                     
             if idx == len(keys) + sum(len(actor[key]) for key in filter(lambda key: key not in SYS_KEYS, keys)):
                 name = get_text_input(G, (0, 840-32))
@@ -492,19 +605,19 @@ def spritesheet_editor(G, name):
             if inp == K_DOWN: idx = min(len(keys), idx + 1)
 
         else:
-            if inp == K_LEFT: CX -= 16 + (48 * mods & KMOD_SHIFT)
-            if inp == K_UP: CY -= 16 + (48 * mods & KMOD_SHIFT)
-            if inp == K_RIGHT: CX += 16 + (48 * mods & KMOD_SHIFT)
-            if inp == K_DOWN: CY += 16 + (48 * mods & KMOD_SHIFT)
+            if inp == K_LEFT: CX -= 16 + (48 * (mods & KMOD_SHIFT))
+            if inp == K_UP: CY -= 16 + (48 * (mods & KMOD_SHIFT))
+            if inp == K_RIGHT: CX += 16 + (48 * (mods & KMOD_SHIFT))
+            if inp == K_DOWN: CY += 16 + (48 * (mods & KMOD_SHIFT))
 
-        if inp == K_a: SX -= 16 + (48 * mods & KMOD_SHIFT)
-        if inp == K_w: SY -= 16 + (48 * mods & KMOD_SHIFT)
-        if inp == K_d: SX += 16 + (48 * mods & KMOD_SHIFT)
+        if inp == K_a: SX -= 16 + (48 * (mods & KMOD_SHIFT))
+        if inp == K_w: SY -= 16 + (48 * (mods & KMOD_SHIFT))
+        if inp == K_d: SX += 16 + (48 * (mods & KMOD_SHIFT))
 
         if inp == K_s and mods & KMOD_CTRL:
             save()
 
-        elif inp == K_s: SY += 16 + (48 * mods & KMOD_SHIFT)
+        elif inp == K_s: SY += 16 + (48 * (mods & KMOD_SHIFT))
 
         if inp == K_ESCAPE:
             return
@@ -513,15 +626,16 @@ def spritesheet_editor(G, name):
             if idx < len(keys):
                 pos, dim = sheet[keys[idx]]
                 CX, CY = pos
+                SX, SY = (0-pos[0], pos[1])
                 corner = pos[0] + dim[0], pos[1] + dim[1]
         
         elif inp == K_SPACE:
             corner = (CX, CY)
 
-        if inp == K_RETURN:
+        if inp == K_RETURN and corner is not None:
             if idx < len(keys):
                 sheet[keys[idx]] = make_rect(corner, (CX, CY))
-            elif corner is not None:
+            else:
                 sheet[get_text_input(G, (0, 840-32))] = make_rect(corner, (CX, CY))
                 keys = list(sheet.keys())
 

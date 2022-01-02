@@ -27,7 +27,7 @@ ALPHABET_SHIFT_MAP = {
 def get_text_input(G, pos):
     string = ''
     while True:
-        surf = Surface((256, 32))
+        surf = Surface((1080, 32))
         surf.fill((230, 230, 230))
         surf.blit(G["HEL32"].render(string, 0, (0, 0, 0)), (0, 0))
         G["SCREEN"].blit(surf, pos)
@@ -88,11 +88,11 @@ def select_from_list(G, list, pos, cb=lambda *args: None):
     while True:
         surf = Surface((256, 32*len(list)))
         surf.fill((230, 230, 230))
-        cb(G, idx)
+        cb(G)
         for i, text in enumerate(list):
             col = (0, 0, 0) if i != idx else (160, 110, 190)
             surf.blit(G["HEL32"].render(str(text), 0, col), (0, i*32))
-        G["SCREEN"].blit(surf, pos)
+        G["SCREEN"].blit(surf, (pos[0], pos[1] - idx*32))
         inp = expect_input()
 
         if inp == K_UP: idx -= 1
