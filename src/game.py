@@ -80,7 +80,7 @@ def say(G, image_id, text):
         surf.blit(actor, (28, 23-5))
         surf.blit(G["SYSIMG"]["SAY"], (0, 0))
         for i, line in enumerate(text.split("/")):
-            surf.blit(G["HEL32"].render(line, 0, (0, 0, 0)), (225, 20 + i*34))
+            surf.blit(G["HEL32"].render(line, 0, (0, 0, 0)), (229, 22 + i*34))
         surf.set_colorkey((1, 255, 1))
         G["SCREEN"].blit(surf, (220, 640 - 256 - 64))
     expect_click(G, _say)
