@@ -7,9 +7,11 @@ from src.rooms import ROOMS
 from src.actors import ACTORS
 from src.items import ITEMS
 
+import sys
+
 TITLE="Point And Click Adventure Game Jam"
 
-STARTING_ROOM = "ROOT"
+STARTING_ROOM = "ROOT" if '-r' not in sys.argv else sys.argv[sys.argv.index('-r') + 1]
 
 SHOW_INV = False
 
@@ -50,6 +52,10 @@ def resolve(G, cmd):
     elif verb == "put":
         room, item = data.split(":")
         ROOMS[room]["ITEMS"].append(item)
+
+    elif verb == "place":
+        room, actor = data.split(":")
+        ROOMS[room]["ACTORS"].append(actor)
 
     elif verb == "drop":
         room, name = data.split(":")

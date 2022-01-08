@@ -16,7 +16,7 @@ TITLE = "Point and Click Editor"
 IMG_LOCATION = "src/img/"
 
 SYS_KEYS = ["MOUSE", "IMG", "RECT", "STATE"]
-COMMAND_TYPES = ["say", "unlock", "give", "update", "goto", "change", "img", "put", "drop", "exec"]
+COMMAND_TYPES = ["say", "unlock", "give", "update", "goto", "change", "img", "put", "drop", "exec", "place"]
 
 SHEETS = {
     "rooms.png"  : ROOM_SPRITESHEET,
@@ -277,13 +277,15 @@ def drawn_spritesheet_data(G, d, idx=None):
     keys = d.keys()
     surf = Surface((512, (len(d.keys()) + 1) * 16))
     surf.fill((255, 255, 255))
+    offset = 0 if idx < 20 else 20 * 16
+        
     for i, key in enumerate(keys):
         col = (200, 0, 120) if i == idx else (0, 0, 0)
-        surf.blit(G["HEL16"].render(key, 0 , col), (0, i * 16))
-        surf.blit(G["HEL16"].render(str(d[key]), 0 , col), (128, i * 16))
+        surf.blit(G["HEL16"].render(key, 0 , col), (0, (i * 16) - offset))
+        surf.blit(G["HEL16"].render(str(d[key]), 0 , col), (128, (i * 16)-offset))
     if idx is not None:
         col = (200, 0, 120) if idx == len(d) else (0, 0, 0)
-        surf.blit(G["HEL16"].render("ADD...", 0 , col), (0, (len(keys)) * 16))
+        surf.blit(G["HEL16"].render("ADD...", 0 , col), (0, (len(keys) * 16) - offset))
     return surf
 
 def make_rect(pos, pos2):
@@ -422,6 +424,13 @@ def make_cmd(G):
                 if item:
                     return "{cmd}|{room}:{item}".format(cmd=cmd, room=room, item=item)
 
+        if cmd == "place":
+            room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
+            if room:
+                actor = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
+                if actor:
+                    return "{cmd}|{room}:{actor}".format(cmd=cmd, room=room, actor=actor)
+
         if cmd == "drop":
             room = select_from_list(G, list(ROOMS.keys()), (0, 0), cb=draw)
             if room:
@@ -496,6 +505,13 @@ def edit_cmd(G, cmd, depth):
             item = select_from_list(G, list(ITEMS.keys()), (0, 0), cb=draw)
             if item:
                 return "{verb}|{room}:{item}".format(verb=verb, room=room, item=item)
+
+    if cmd == "place":
+        room = data.split(":")[0]
+        if room:
+            actor = select_from_list(G, list(ACTORS.keys()), (0, 0), cb=draw)
+            if item:
+                return "{verb}|{room}:{actor}".format(verb=verb, room=room, actor=actor)
 
     if cmd == "drop":
         room = data.split(":")[0]
